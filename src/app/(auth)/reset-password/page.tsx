@@ -50,7 +50,7 @@ function ResetPasswordContent() {
         <p style={{ fontSize: 14, color: "var(--body)" }}>Enter your new password below.</p>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <Input label="New password" type="password" value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} placeholder="At least 8 characters" />
         <Input label="Confirm password" type="password" value={confirmPassword} onChange={(e) => { setConfirmPassword(e.target.value); setError(""); }} placeholder="Confirm your password" />
 

@@ -10,10 +10,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
+    const supabase = createAdminClient();
+
+    // Check if email is already registered
+    const { data: existingUsers } = await supabase.auth.admin.listUsers();
+    const emailTaken = existingUsers?.users?.some((u) => u.email === email);
+    if (emailTaken) {
+      return NextResponse.json(
+        { error: "An account with this email already exists. Please log in instead." },
+        { status: 409 }
+      );
+    }
+
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-    const supabase = createAdminClient();
 
     // Invalidate any existing codes for this email
     await supabase

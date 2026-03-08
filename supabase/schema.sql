@@ -101,7 +101,7 @@ create table public.subscriptions (
   id uuid default uuid_generate_v4() primary key,
   organization_id uuid references public.organizations(id) on delete cascade not null,
   stripe_customer_id text,
-  stripe_subscription_id text,
+  stripe_subscription_id text unique,
   plan text default 'free' check (plan in ('free', 'pro', 'enterprise')),
   status text default 'active' check (status in ('active', 'past_due', 'canceled', 'trialing')),
   current_period_end timestamptz,

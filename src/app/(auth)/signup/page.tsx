@@ -71,6 +71,13 @@ export default function SignupPage() {
         Already have an account?{" "}
         <Link href="/login" style={{ color: "var(--primary)", fontWeight: 500 }}>Log in</Link>
       </p>
+
+      <p style={{ textAlign: "center", fontSize: 12, color: "var(--body-light)", marginTop: 12, lineHeight: 1.5 }}>
+        By creating an account, you agree to our{" "}
+        <Link href="/terms" style={{ color: "var(--body-light)", textDecoration: "underline" }}>Terms of Service</Link>{" "}
+        and{" "}
+        <Link href="/privacy" style={{ color: "var(--body-light)", textDecoration: "underline" }}>Privacy Policy</Link>.
+      </p>
     </>
   );
 }

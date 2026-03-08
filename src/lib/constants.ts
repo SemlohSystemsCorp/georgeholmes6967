@@ -6,6 +6,7 @@ export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000
 export const PLANS = [
   {
     name: "Free",
+    slug: "free",
     price: "$0",
     period: "forever",
     description: "For individuals getting started",
@@ -16,10 +17,12 @@ export const PLANS = [
       "Community support",
     ],
     cta: "Get Started",
+    href: "/signup",
     highlighted: false,
   },
   {
     name: "Pro",
+    slug: "pro",
     price: "$12",
     period: "/user/month",
     description: "For growing teams that need more",
@@ -32,10 +35,12 @@ export const PLANS = [
       "Analytics dashboard",
     ],
     cta: "Start Free Trial",
+    href: "/checkout/pro",
     highlighted: true,
   },
   {
     name: "Enterprise",
+    slug: "enterprise",
     price: "Custom",
     period: "",
     description: "For organizations with advanced needs",
@@ -49,6 +54,7 @@ export const PLANS = [
       "Audit logs",
     ],
     cta: "Contact Sales",
+    href: "/checkout/enterprise",
     highlighted: false,
   },
 ] as const;

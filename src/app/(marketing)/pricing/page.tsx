@@ -62,7 +62,7 @@ export default function PricingPage() {
                   </li>
                 ))}
               </ul>
-              <Link href={plan.name === "Enterprise" ? "#" : "/signup"}>
+              <Link href={plan.href}>
                 <Button variant={plan.highlighted ? "primary" : "secondary"} fullWidth>
                   {plan.cta}
                 </Button>

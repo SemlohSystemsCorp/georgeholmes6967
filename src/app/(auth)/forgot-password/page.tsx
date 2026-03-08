@@ -62,7 +62,7 @@ export default function ForgotPasswordPage() {
         <p style={{ fontSize: 14, color: "var(--body)" }}>Enter your email and we&apos;ll send you a reset link.</p>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <Input label="Email" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} placeholder="you@example.com" />
 
         {error && (
