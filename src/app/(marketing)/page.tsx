@@ -73,13 +73,13 @@ export default function HomePage() {
           <p style={{ ...center, fontSize: 12, fontWeight: 500, color: "var(--body-light)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 24 }}>
             Trusted by teams at
           </p>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 48, flexWrap: "wrap", opacity: 0.4 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 56, flexWrap: "wrap", opacity: 0.4 }}>
             {trustedLogos.map((logo) => (
-              <div key={logo.name} style={{ height: 24, width: "auto", color: "var(--heading)" }} title={logo.name}>
+              <div key={logo.name} style={{ height: 36, width: "auto", color: "var(--heading)" }} title={logo.name}>
                 {logo.src ? (
-                  <Image src={logo.src} alt={logo.name} width={80} height={24} style={{ height: 24, width: "auto" }} />
+                  <Image src={logo.src} alt={logo.name} width={120} height={36} style={{ height: 36, width: "auto" }} />
                 ) : (
-                  <div style={{ height: 24, width: 80 }} dangerouslySetInnerHTML={{ __html: logo.svg! }} />
+                  <div style={{ height: 36, width: 120 }} dangerouslySetInnerHTML={{ __html: logo.svg! }} />
                 )}
               </div>
             ))}

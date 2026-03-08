@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { validateEmail, validateFullName, validatePassword } from "@/lib/email-validate";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -20,11 +21,14 @@ export default function SignupPage() {
     setError("");
     setLoading(true);
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
-      setLoading(false);
-      return;
-    }
+    const nameCheck = validateFullName(fullName);
+    if (!nameCheck.valid) { setError(nameCheck.error!); setLoading(false); return; }
+
+    const emailCheck = validateEmail(email);
+    if (!emailCheck.valid) { setError(emailCheck.error!); setLoading(false); return; }
+
+    const passCheck = validatePassword(password);
+    if (!passCheck.valid) { setError(passCheck.error!); setLoading(false); return; }
 
     try {
       const res = await fetch("/api/auth/send-code", {

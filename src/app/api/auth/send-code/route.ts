@@ -1,13 +1,22 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resend } from "@/lib/resend";
+import { validateEmail, validateFullName } from "@/lib/email-validate";
 
 export async function POST(request: Request) {
   try {
     const { email, fullName } = await request.json();
 
-    if (!email) {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 });
+    // Validate email
+    const emailCheck = validateEmail(email);
+    if (!emailCheck.valid) {
+      return NextResponse.json({ error: emailCheck.error }, { status: 400 });
+    }
+
+    // Validate full name
+    const nameCheck = validateFullName(fullName);
+    if (!nameCheck.valid) {
+      return NextResponse.json({ error: nameCheck.error }, { status: 400 });
     }
 
     const supabase = createAdminClient();

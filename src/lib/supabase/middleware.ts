@@ -57,5 +57,17 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Set user info cookies for client-side access
+  if (user) {
+    supabaseResponse.cookies.set("cb_user_email", user.email || "", { path: "/", maxAge: 60 * 60 * 24 * 7, sameSite: "lax" });
+    supabaseResponse.cookies.set("cb_user_name", user.user_metadata?.full_name || "", { path: "/", maxAge: 60 * 60 * 24 * 7, sameSite: "lax" });
+    supabaseResponse.cookies.set("cb_user_id", user.id, { path: "/", maxAge: 60 * 60 * 24 * 7, sameSite: "lax" });
+  } else {
+    // Clear cookies if not authenticated
+    supabaseResponse.cookies.delete("cb_user_email");
+    supabaseResponse.cookies.delete("cb_user_name");
+    supabaseResponse.cookies.delete("cb_user_id");
+  }
+
   return supabaseResponse;
 }
