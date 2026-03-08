@@ -14,30 +14,39 @@ export async function POST(request: Request) {
 
     const { username, workspaceName } = await request.json();
 
-    // Validate username
-    const usernameCheck = validateUsername(username);
-    if (!usernameCheck.valid) {
-      return NextResponse.json({ error: usernameCheck.error }, { status: 400 });
-    }
-
     const adminClient = createAdminClient();
 
-    // Check username uniqueness
-    const { data: existingUser } = await adminClient
+    // Check if user already has a username
+    const { data: currentProfile } = await adminClient
       .from("profiles")
-      .select("id")
-      .eq("username", username.trim().toLowerCase())
+      .select("username")
+      .eq("id", user.id)
       .single();
 
-    if (existingUser) {
-      return NextResponse.json({ error: "This username is already taken." }, { status: 409 });
-    }
+    if (!currentProfile?.username) {
+      // First time — validate and set username
+      const usernameCheck = validateUsername(username);
+      if (!usernameCheck.valid) {
+        return NextResponse.json({ error: usernameCheck.error }, { status: 400 });
+      }
 
-    // Update profile with username
-    await adminClient
-      .from("profiles")
-      .update({ username: username.trim().toLowerCase() })
-      .eq("id", user.id);
+      // Check username uniqueness
+      const { data: existingUser } = await adminClient
+        .from("profiles")
+        .select("id")
+        .eq("username", username.trim().toLowerCase())
+        .single();
+
+      if (existingUser) {
+        return NextResponse.json({ error: "This username is already taken." }, { status: 409 });
+      }
+
+      // Update profile with username
+      await adminClient
+        .from("profiles")
+        .update({ username: username.trim().toLowerCase() })
+        .eq("id", user.id);
+    }
 
     // Create workspace if name provided
     let workspaceId: string | null = null;

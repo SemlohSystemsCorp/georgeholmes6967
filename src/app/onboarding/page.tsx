@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
 import { validateUsername } from "@/lib/email-validate";
+import { createClient } from "@/lib/supabase/client";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -15,6 +16,45 @@ export default function OnboardingPage() {
   const [workspaceName, setWorkspaceName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [hasUsername, setHasUsername] = useState(false);
+
+  // Check if user already completed onboarding
+  useEffect(() => {
+    async function check() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push("/login"); return; }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.username) {
+        // Check if they also have a workspace
+        const { data: memberships } = await supabase
+          .from("organization_members")
+          .select("id")
+          .eq("user_id", user.id)
+          .limit(1);
+
+        if (memberships && memberships.length > 0) {
+          // Fully onboarded — go to dashboard
+          router.push("/dashboard");
+          return;
+        }
+
+        // Has username but no workspace — skip to step 2
+        setUsername(profile.username);
+        setHasUsername(true);
+        setStep(2);
+      }
+      setChecking(false);
+    }
+    check();
+  }, [router]);
 
   function handleUsernameChange(val: string) {
     setUsername(val.toLowerCase().replace(/[^a-z0-9._-]/g, ""));
@@ -52,6 +92,14 @@ export default function OnboardingPage() {
       setError("Something went wrong. Please try again.");
       setLoading(false);
     }
+  }
+
+  if (checking) {
+    return (
+      <div style={{ minHeight: "100vh", backgroundColor: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p style={{ fontSize: 14, color: "var(--body)" }}>Loading...</p>
+      </div>
+    );
   }
 
   return (
@@ -120,13 +168,15 @@ export default function OnboardingPage() {
                 )}
 
                 <Button type="submit" loading={loading} fullWidth>Create Workspace</Button>
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  style={{ fontSize: 13, color: "var(--primary)", fontWeight: 500, cursor: "pointer", background: "none", border: "none", fontFamily: "inherit" }}
-                >
-                  &larr; Back
-                </button>
+                {!hasUsername && (
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    style={{ fontSize: 13, color: "var(--primary)", fontWeight: 500, cursor: "pointer", background: "none", border: "none", fontFamily: "inherit" }}
+                  >
+                    &larr; Back
+                  </button>
+                )}
               </form>
             </>
           )}
