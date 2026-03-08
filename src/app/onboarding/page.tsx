@@ -23,25 +23,57 @@ export default function OnboardingPage() {
   useEffect(() => {
     async function check() {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.push("/login"); return; }
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-      const { data: profile } = await supabase
+      if (authError) {
+        console.error("[onboarding] Auth error:", authError.message);
+      }
+      if (!user) {
+        console.log("[onboarding] No user session, redirecting to login");
+        router.push("/login");
+        return;
+      }
+
+      console.log("[onboarding] Authenticated user:", user.id, user.email);
+
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("username")
         .eq("id", user.id)
         .single();
 
+      if (profileError) {
+        console.error("[onboarding] Profile query failed:", {
+          message: profileError.message,
+          code: profileError.code,
+          details: profileError.details,
+          hint: profileError.hint,
+        });
+        // Profile fetch failed — show onboarding from step 1
+        setChecking(false);
+        return;
+      }
+
+      console.log("[onboarding] Profile:", { username: profile?.username });
+
       if (profile?.username) {
-        // Check if they also have a workspace
-        const { data: memberships } = await supabase
+        const { data: memberships, error: membError } = await supabase
           .from("organization_members")
           .select("id")
           .eq("user_id", user.id)
           .limit(1);
 
+        if (membError) {
+          console.error("[onboarding] Memberships query failed:", {
+            message: membError.message,
+            code: membError.code,
+            details: membError.details,
+            hint: membError.hint,
+          });
+        }
+
         if (memberships && memberships.length > 0) {
-          // Fully onboarded — go to dashboard
+          console.log("[onboarding] Fully onboarded, redirecting to dashboard");
           router.push("/dashboard");
           return;
         }

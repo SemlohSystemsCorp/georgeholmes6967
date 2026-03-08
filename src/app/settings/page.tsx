@@ -22,17 +22,30 @@ export default function SettingsPage() {
   useEffect(() => {
     async function loadProfile() {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+      if (authError) {
+        console.error("[settings] Auth error:", authError.message);
+      }
       if (!user) { router.push("/login"); return; }
 
       setEmail(user.email || "");
       setFullName(user.user_metadata?.full_name || "");
 
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("username")
         .eq("id", user.id)
         .single();
+
+      if (profileError) {
+        console.error("[settings] Profile query failed:", {
+          message: profileError.message,
+          code: profileError.code,
+          details: profileError.details,
+          hint: profileError.hint,
+        });
+      }
 
       if (profile?.username) setUsername(profile.username);
       setLoading(false);

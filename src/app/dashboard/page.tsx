@@ -13,11 +13,21 @@ export default async function DashboardPage() {
   }
 
   // Fetch user profile
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("username, full_name, avatar_url")
     .eq("id", user.id)
     .single();
+
+  if (profileError) {
+    console.error("[dashboard] Profile query failed:", {
+      message: profileError.message,
+      code: profileError.code,
+      details: profileError.details,
+      hint: profileError.hint,
+      userId: user.id,
+    });
+  }
 
   // Check if user needs onboarding
   if (!profile?.username) {
@@ -25,10 +35,20 @@ export default async function DashboardPage() {
   }
 
   // Fetch user's workspaces with member counts
-  const { data: memberships } = await supabase
+  const { data: memberships, error: membError } = await supabase
     .from("organization_members")
     .select("organization_id, role, organizations(id, name, slug, plan, invite_code)")
     .eq("user_id", user.id);
+
+  if (membError) {
+    console.error("[dashboard] Memberships query failed:", {
+      message: membError.message,
+      code: membError.code,
+      details: membError.details,
+      hint: membError.hint,
+      userId: user.id,
+    });
+  }
 
   const workspaces = memberships?.map((m) => {
     const org = m.organizations as unknown as { id: string; name: string; slug: string; plan: string; invite_code: string } | null;

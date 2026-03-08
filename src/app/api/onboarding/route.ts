@@ -9,19 +9,27 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
+      console.log("[onboarding-api] No authenticated user");
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
+    console.log("[onboarding-api] User:", user.id, user.email);
+
     const { username, workspaceName } = await request.json();
+    console.log("[onboarding-api] Input:", { username, workspaceName });
 
     const adminClient = createAdminClient();
 
     // Check if user already has a username
-    const { data: currentProfile } = await adminClient
+    const { data: currentProfile, error: profileError } = await adminClient
       .from("profiles")
       .select("username")
       .eq("id", user.id)
       .single();
+
+    if (profileError) {
+      console.error("[onboarding-api] Profile fetch error:", profileError.message, profileError.code);
+    }
 
     if (!currentProfile?.username) {
       // First time — validate and set username
@@ -42,10 +50,19 @@ export async function POST(request: Request) {
       }
 
       // Update profile with username
-      await adminClient
+      const { error: updateError } = await adminClient
         .from("profiles")
         .update({ username: username.trim().toLowerCase() })
         .eq("id", user.id);
+
+      if (updateError) {
+        console.error("[onboarding-api] Username update error:", updateError.message, updateError.code);
+        return NextResponse.json({ error: "Failed to set username." }, { status: 500 });
+      }
+
+      console.log("[onboarding-api] Username set:", username.trim().toLowerCase());
+    } else {
+      console.log("[onboarding-api] User already has username:", currentProfile.username);
     }
 
     // Create workspace if name provided
@@ -67,11 +84,14 @@ export async function POST(request: Request) {
         .single();
 
       if (orgError) {
+        console.error("[onboarding-api] Org creation error:", orgError.message, orgError.code, orgError.details);
         return NextResponse.json({ error: "Failed to create workspace." }, { status: 500 });
       }
 
+      console.log("[onboarding-api] Organization created:", org.id, org.slug);
+
       // Add user as owner member
-      await adminClient
+      const { error: memberError } = await adminClient
         .from("organization_members")
         .insert({
           organization_id: org.id,
@@ -79,8 +99,12 @@ export async function POST(request: Request) {
           role: "owner",
         });
 
+      if (memberError) {
+        console.error("[onboarding-api] Member insert error:", memberError.message, memberError.code);
+      }
+
       // Create a default #general channel
-      await adminClient
+      const { error: channelError } = await adminClient
         .from("channels")
         .insert({
           organization_id: org.id,
@@ -89,11 +113,17 @@ export async function POST(request: Request) {
           created_by: user.id,
         });
 
+      if (channelError) {
+        console.error("[onboarding-api] Channel creation error:", channelError.message, channelError.code);
+      }
+
       workspaceId = org.slug;
     }
 
+    console.log("[onboarding-api] Success, workspaceId:", workspaceId);
     return NextResponse.json({ success: true, workspaceId });
-  } catch {
+  } catch (err) {
+    console.error("[onboarding-api] Unhandled error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
