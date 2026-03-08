@@ -29,19 +29,41 @@ export async function POST(request: Request) {
       const userEmail = session.metadata?.userEmail || "";
       const userName = session.metadata?.userName || "";
 
+      const organizationId = session.metadata?.organizationId;
+
       if (userId && session.subscription) {
         const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
         const billingAnchor = subscription.billing_cycle_anchor;
 
-        // Upsert subscription in database
-        await supabase.from("subscriptions").upsert({
-          organization_id: userId, // Using userId as org reference until org is created
-          stripe_customer_id: session.customer as string,
-          stripe_subscription_id: subscription.id,
-          plan,
-          status: "active",
-          current_period_end: new Date(billingAnchor * 1000).toISOString(),
-        }, { onConflict: "stripe_subscription_id" });
+        // Determine which org to associate — use metadata org or find user's first org
+        let orgId = organizationId;
+        if (!orgId) {
+          const { data: membership } = await supabase
+            .from("organization_members")
+            .select("organization_id")
+            .eq("user_id", userId)
+            .limit(1)
+            .single();
+          orgId = membership?.organization_id;
+        }
+
+        if (orgId) {
+          // Upsert subscription in database
+          await supabase.from("subscriptions").upsert({
+            organization_id: orgId,
+            stripe_customer_id: session.customer as string,
+            stripe_subscription_id: subscription.id,
+            plan,
+            status: "active",
+            current_period_end: new Date(billingAnchor * 1000).toISOString(),
+          }, { onConflict: "stripe_subscription_id" });
+
+          // Update the organization's plan (triggers realtime for dashboard)
+          await supabase
+            .from("organizations")
+            .update({ plan })
+            .eq("id", orgId);
+        }
 
         // Send confirmation email
         if (userEmail) {
@@ -94,15 +116,39 @@ export async function POST(request: Request) {
           current_period_end: new Date(subscription.billing_cycle_anchor * 1000).toISOString(),
         })
         .eq("stripe_subscription_id", subscription.id);
+
+      // If canceled or past_due, update org plan back to free
+      if (status === "canceled") {
+        const { data: sub } = await supabase
+          .from("subscriptions")
+          .select("organization_id")
+          .eq("stripe_subscription_id", subscription.id)
+          .single();
+        if (sub?.organization_id) {
+          await supabase.from("organizations").update({ plan: "free" }).eq("id", sub.organization_id);
+        }
+      }
       break;
     }
 
     case "customer.subscription.deleted": {
       const subscription = event.data.object as Stripe.Subscription;
+      // Find the org before updating
+      const { data: sub } = await supabase
+        .from("subscriptions")
+        .select("organization_id")
+        .eq("stripe_subscription_id", subscription.id)
+        .single();
+
       await supabase
         .from("subscriptions")
         .update({ status: "canceled" })
         .eq("stripe_subscription_id", subscription.id);
+
+      // Revert org plan to free
+      if (sub?.organization_id) {
+        await supabase.from("organizations").update({ plan: "free" }).eq("id", sub.organization_id);
+      }
       break;
     }
   }
