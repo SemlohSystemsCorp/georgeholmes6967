@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import DashboardClient from "./dashboard-client";
 
 export default async function DashboardPage() {
@@ -12,8 +13,12 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
+  // Use admin client for data fetching to bypass RLS
+  // (user is already authenticated via supabase.auth.getUser above)
+  const admin = createAdminClient();
+
   // Fetch user profile
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile, error: profileError } = await admin
     .from("profiles")
     .select("username, full_name, avatar_url")
     .eq("id", user.id)
@@ -34,8 +39,8 @@ export default async function DashboardPage() {
     redirect("/onboarding");
   }
 
-  // Fetch user's workspaces with member counts
-  const { data: memberships, error: membError } = await supabase
+  // Fetch user's workspaces
+  const { data: memberships, error: membError } = await admin
     .from("organization_members")
     .select("organization_id, role, organizations(id, name, slug, plan, invite_code)")
     .eq("user_id", user.id);

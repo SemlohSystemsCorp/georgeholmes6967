@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
 import { validateUsername } from "@/lib/email-validate";
-import { createClient } from "@/lib/supabase/client";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -19,69 +18,39 @@ export default function OnboardingPage() {
   const [checking, setChecking] = useState(true);
   const [hasUsername, setHasUsername] = useState(false);
 
-  // Check if user already completed onboarding
+  // Check if user already completed onboarding via server API (bypasses RLS)
   useEffect(() => {
     async function check() {
-      const supabase = createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-      if (authError) {
-        console.error("[onboarding] Auth error:", authError.message);
-      }
-      if (!user) {
-        console.log("[onboarding] No user session, redirecting to login");
-        router.push("/login");
-        return;
-      }
-
-      console.log("[onboarding] Authenticated user:", user.id, user.email);
-
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("username")
-        .eq("id", user.id)
-        .single();
-
-      if (profileError) {
-        console.error("[onboarding] Profile query failed:", {
-          message: profileError.message,
-          code: profileError.code,
-          details: profileError.details,
-          hint: profileError.hint,
-        });
-        // Profile fetch failed — show onboarding from step 1
-        setChecking(false);
-        return;
-      }
-
-      console.log("[onboarding] Profile:", { username: profile?.username });
-
-      if (profile?.username) {
-        const { data: memberships, error: membError } = await supabase
-          .from("organization_members")
-          .select("id")
-          .eq("user_id", user.id)
-          .limit(1);
-
-        if (membError) {
-          console.error("[onboarding] Memberships query failed:", {
-            message: membError.message,
-            code: membError.code,
-            details: membError.details,
-            hint: membError.hint,
-          });
+      try {
+        const res = await fetch("/api/profile/status");
+        if (res.status === 401) {
+          console.log("[onboarding] Not authenticated, redirecting to login");
+          router.push("/login");
+          return;
+        }
+        if (!res.ok) {
+          console.error("[onboarding] Status check failed:", res.status);
+          setChecking(false);
+          return;
         }
 
-        if (memberships && memberships.length > 0) {
+        const data = await res.json();
+        console.log("[onboarding] Profile status:", data);
+
+        if (data.username && data.hasWorkspace) {
           console.log("[onboarding] Fully onboarded, redirecting to dashboard");
           router.push("/dashboard");
           return;
         }
 
-        // Has username but no workspace — skip to step 2
-        setUsername(profile.username);
-        setHasUsername(true);
-        setStep(2);
+        if (data.username) {
+          // Has username but no workspace — skip to step 2
+          setUsername(data.username);
+          setHasUsername(true);
+          setStep(2);
+        }
+      } catch (err) {
+        console.error("[onboarding] Status check error:", err);
       }
       setChecking(false);
     }
